@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT;
 
 // Middleware
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PATCH'], allowedHeaders: ['Content-Type'] }));
+app.use(cors({ origin: 'https://membershipform-omega.vercel.app/', methods: ['GET', 'POST', 'PATCH'], allowedHeaders: ['Content-Type'] }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(fileUpload({ useTempFiles: true }));
