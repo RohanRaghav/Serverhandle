@@ -11,7 +11,7 @@ const PORT = process.env.PORT;
 
 // Middleware
 const corsOptions = {
-  origin: [ 'https://dashboard-three-lilac-57.vercel.app/'],
+  origin: ['https://membershipform-omega.vercel.app/', 'https://dashboard-three-lilac-57.vercel.app/'],
   methods: ['GET', 'POST', 'PATCH'],
   allowedHeaders: ['Content-Type'],
 };
