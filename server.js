@@ -10,16 +10,12 @@ const app = express();
 const PORT = process.env.PORT;
 
 // Middleware
-const allowedOrigins  = ['https://membershipform-omega.vercel.app', 'https://dashboard-three-lilac-57.vercel.app'];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-}));
+const corsOptions = {
+  origin: [ 'https://dashboard-three-lilac-57.vercel.app/'],
+  methods: ['GET', 'POST', 'PATCH'],
+  allowedHeaders: ['Content-Type'],
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(fileUpload({ useTempFiles: true }));
