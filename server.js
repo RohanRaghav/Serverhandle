@@ -10,8 +10,9 @@ const app = express();
 const PORT = process.env.PORT;
 const corsOptions = {
   origin: ['https://membershipform-omega.vercel.app', 'https://dashboard-three-lilac-57.vercel.app'],
-  methods: ['GET', 'POST', 'PATCH'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // Allow credentials (cookies, authorization headers)
 };
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
