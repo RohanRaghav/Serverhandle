@@ -5,6 +5,10 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const fileUpload = require('express-fileupload');
+const FormData = require('form-data');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT;
@@ -22,7 +26,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Use express-fileupload without specifying tempFileDir
 app.use(fileUpload({
-  useTempFiles: false,  // Don't use temporary files, upload directly from memory
+  useTempFiles: true,  // Enable use of temporary files for uploading
 }));
 
 app.options('*', cors());
@@ -97,22 +101,38 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Upload CV/Portfolio to Cloudinary (directly from memory as buffer)
+    // Create form data to send to Cloudinary
+    const formDataCV = new FormData();
+    const formDataImage = new FormData();
+
+    // Upload CV/Portfolio to Cloudinary using form-data
     if (files && files.cvPortfolio) {
-      const uploadResponse = await cloudinary.uploader.upload(
-        files.cvPortfolio.data, // Directly use the buffer here
-        { resource_type: 'raw', folder: 'Uploads' }
+      formDataCV.append('file', fs.createReadStream(files.cvPortfolio.tempFilePath));  // Use tempFilePath directly
+      formDataCV.append('upload_preset', process.env.CLOUDINARY_UPLOAD_PRESET);
+      formDataCV.append('resource_type', 'raw');  // For non-image files like PDF, DOC, etc.
+
+      // Send to Cloudinary using axios
+      const uploadResponseCV = await axios.post(
+        `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/upload`,
+        formDataCV,
+        { headers: formDataCV.getHeaders() }
       );
-      cvPortfolioUrl = uploadResponse.secure_url;
+      cvPortfolioUrl = uploadResponseCV.data.secure_url;
     }
 
-    // Upload Image to Cloudinary (directly from memory as buffer)
+    // Upload Image to Cloudinary using form-data
     if (files && files.image) {
-      const uploadResponse = await cloudinary.uploader.upload(
-        files.image.data, // Directly use the buffer here
-        { resource_type: 'image', folder: 'Images' }
+      formDataImage.append('file', fs.createReadStream(files.image.tempFilePath));  // Use tempFilePath directly
+      formDataImage.append('upload_preset', process.env.CLOUDINARY_UPLOAD_PRESET);
+      formDataImage.append('resource_type', 'image');  // For image files
+
+      // Send to Cloudinary using axios
+      const uploadResponseImage = await axios.post(
+        `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/upload`,
+        formDataImage,
+        { headers: formDataImage.getHeaders() }
       );
-      imageUrl = uploadResponse.secure_url;
+      imageUrl = uploadResponseImage.data.secure_url;
     }
 
     // Create a new member document
