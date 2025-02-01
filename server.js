@@ -16,7 +16,6 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
-
 app.use(cors(corsOptions));
 app.options('*', cors()); // Handle preflight requests globally
 app.use(bodyParser.json());
