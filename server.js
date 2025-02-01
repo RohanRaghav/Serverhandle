@@ -5,8 +5,6 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const fileUpload = require('express-fileupload');
-const FormData = require('form-data');
-const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT;
@@ -99,34 +97,34 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Directly upload to Cloudinary
+    // Directly upload to Cloudinary (buffer method)
     if (files && files.cvPortfolio) {
-      // Upload CV/Portfolio to Cloudinary using form-data
-      const cvUploadResponse = await cloudinary.uploader.upload_stream(
+      // Upload CV/Portfolio to Cloudinary (Buffer)
+      const cvUploadResponse = await cloudinary.uploader.upload(
+        files.cvPortfolio.data, // Buffer
         { resource_type: 'raw' }, // For non-image files like PDF
-        async (error, result) => {
+        (error, result) => {
           if (error) {
             return res.status(500).json({ message: 'Error uploading CV to Cloudinary', error });
           }
           cvPortfolioUrl = result.secure_url;
         }
       );
-      files.cvPortfolio.data.pipe(cvUploadResponse);
     }
 
-    // Directly upload image to Cloudinary
+    // Directly upload image to Cloudinary (buffer method)
     if (files && files.image) {
-      // Upload Image to Cloudinary using form-data
-      const imageUploadResponse = await cloudinary.uploader.upload_stream(
+      // Upload Image to Cloudinary (Buffer)
+      const imageUploadResponse = await cloudinary.uploader.upload(
+        files.image.data, // Buffer
         { resource_type: 'image' }, // For image files
-        async (error, result) => {
+        (error, result) => {
           if (error) {
             return res.status(500).json({ message: 'Error uploading image to Cloudinary', error });
           }
           imageUrl = result.secure_url;
         }
       );
-      files.image.data.pipe(imageUploadResponse);
     }
 
     // Create a new member document
