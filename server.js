@@ -59,7 +59,6 @@ const memberSchema = new mongoose.Schema({
 
 const Member = mongoose.model('Member', memberSchema);
 
-// API Endpoint to Save Member Data
 app.post('/api/members', async (req, res) => {
   try {
     const { files } = req;
@@ -74,35 +73,49 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Upload CV/Portfolio to Cloudinary (using stream for Buffer)
-    if (files && files.cvPortfolio) {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'Uploads', resource_type: 'raw' },
-        (error, result) => {
-          if (error) {
-            console.error('Error uploading CV/Portfolio:', error);
-            return res.status(500).json({ message: 'Error uploading CV/Portfolio' });
+    // Function to upload CV/Portfolio
+    const uploadCvPortfolio = new Promise((resolve, reject) => {
+      if (files && files.cvPortfolio) {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'Uploads', resource_type: 'raw' },
+          (error, result) => {
+            if (error) {
+              reject('Error uploading CV/Portfolio');
+            } else {
+              cvPortfolioUrl = result.secure_url;
+              resolve();
+            }
           }
-          cvPortfolioUrl = result.secure_url;
-        }
-      );
-      streamifier.createReadStream(files.cvPortfolio.data).pipe(uploadStream);
-    }
+        );
+        streamifier.createReadStream(files.cvPortfolio.data).pipe(uploadStream);
+      } else {
+        resolve(); // No CV/Portfolio, resolve immediately
+      }
+    });
 
-    // Upload Image to Cloudinary (using stream for Buffer)
-    if (files && files.image) {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'Images', resource_type: 'image' },
-        (error, result) => {
-          if (error) {
-            console.error('Error uploading Image:', error);
-            return res.status(500).json({ message: 'Error uploading Image' });
+    // Function to upload Image
+    const uploadImage = new Promise((resolve, reject) => {
+      if (files && files.image) {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'Images', resource_type: 'image' },
+          (error, result) => {
+            if (error) {
+              reject('Error uploading Image');
+            } else {
+              imageUrl = result.secure_url;
+              resolve();
+            }
           }
-          imageUrl = result.secure_url;
-        }
-      );
-      streamifier.createReadStream(files.image.data).pipe(uploadStream);
-    }
+        );
+        streamifier.createReadStream(files.image.data).pipe(uploadStream);
+      } else {
+        resolve(); // No image, resolve immediately
+      }
+    });
+
+    // Wait for both uploads to finish
+    await Promise.all([uploadCvPortfolio, uploadImage]);
+
     // Create Member Document
     const newMember = new Member({
       fullName,
@@ -124,7 +137,7 @@ app.post('/api/members', async (req, res) => {
       suggestions,
       feedback,
       cvPortfolioUrl,
-      imageUrl, // Save image URL
+      imageUrl,
     });
 
     // Save Member Data
@@ -139,6 +152,7 @@ app.post('/api/members', async (req, res) => {
     res.status(500).send({ message: 'Error saving member data' });
   }
 });
+
 app.get("/api/users", async (req, res) => {
   try {
     const members = await Member.find();
