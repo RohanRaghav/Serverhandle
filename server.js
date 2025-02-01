@@ -7,8 +7,6 @@ const cloudinary = require('cloudinary').v2;
 const fileUpload = require('express-fileupload');
 const FormData = require('form-data');
 const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT;
@@ -26,7 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Use express-fileupload without specifying tempFileDir
 app.use(fileUpload({
-  useTempFiles: true,  // Enable use of temporary files for uploading
+  useTempFiles: false,  // Disable temp file handling
 }));
 
 app.options('*', cors());
@@ -101,38 +99,34 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Create form data to send to Cloudinary
-    const formDataCV = new FormData();
-    const formDataImage = new FormData();
-
-    // Upload CV/Portfolio to Cloudinary using form-data
+    // Directly upload to Cloudinary
     if (files && files.cvPortfolio) {
-      formDataCV.append('file', fs.createReadStream(files.cvPortfolio.tempFilePath));  // Use tempFilePath directly
-      formDataCV.append('upload_preset', process.env.CLOUDINARY_UPLOAD_PRESET);
-      formDataCV.append('resource_type', 'raw');  // For non-image files like PDF, DOC, etc.
-
-      // Send to Cloudinary using axios
-      const uploadResponseCV = await axios.post(
-        `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/upload`,
-        formDataCV,
-        { headers: formDataCV.getHeaders() }
+      // Upload CV/Portfolio to Cloudinary using form-data
+      const cvUploadResponse = await cloudinary.uploader.upload_stream(
+        { resource_type: 'raw' }, // For non-image files like PDF
+        async (error, result) => {
+          if (error) {
+            return res.status(500).json({ message: 'Error uploading CV to Cloudinary', error });
+          }
+          cvPortfolioUrl = result.secure_url;
+        }
       );
-      cvPortfolioUrl = uploadResponseCV.data.secure_url;
+      files.cvPortfolio.data.pipe(cvUploadResponse);
     }
 
-    // Upload Image to Cloudinary using form-data
+    // Directly upload image to Cloudinary
     if (files && files.image) {
-      formDataImage.append('file', fs.createReadStream(files.image.tempFilePath));  // Use tempFilePath directly
-      formDataImage.append('upload_preset', process.env.CLOUDINARY_UPLOAD_PRESET);
-      formDataImage.append('resource_type', 'image');  // For image files
-
-      // Send to Cloudinary using axios
-      const uploadResponseImage = await axios.post(
-        `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/upload`,
-        formDataImage,
-        { headers: formDataImage.getHeaders() }
+      // Upload Image to Cloudinary using form-data
+      const imageUploadResponse = await cloudinary.uploader.upload_stream(
+        { resource_type: 'image' }, // For image files
+        async (error, result) => {
+          if (error) {
+            return res.status(500).json({ message: 'Error uploading image to Cloudinary', error });
+          }
+          imageUrl = result.secure_url;
+        }
       );
-      imageUrl = uploadResponseImage.data.secure_url;
+      files.image.data.pipe(imageUploadResponse);
     }
 
     // Create a new member document
