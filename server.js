@@ -5,19 +5,26 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const fileUpload = require('express-fileupload');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT;
+
 const corsOptions = {
   origin: ['https://membershipform-omega.vercel.app', 'https://dashboard-three-lilac-57.vercel.app'],
   methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true, // Allow credentials (cookies, authorization headers)
 };
+
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(fileUpload({ useTempFiles: true }));
+
+// Specify the temp file directory for express-fileupload
+const tempDir = path.join(__dirname, 'tmp');
+app.use(fileUpload({ useTempFiles: true, tempFileDir: tempDir }));
+
 app.options('*', cors());
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "https://membershipform-omega.vercel.app");
@@ -29,6 +36,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -44,8 +52,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Member Schema
-// Member Schema
 const memberSchema = new mongoose.Schema({
   fullName: String,
   UID: String,
@@ -143,6 +149,7 @@ app.post('/api/members', async (req, res) => {
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 });
+
 app.get("/api/users", async (req, res) => {
   try {
     const members = await Member.find();
@@ -151,6 +158,7 @@ app.get("/api/users", async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
