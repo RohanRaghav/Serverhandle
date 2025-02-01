@@ -8,36 +8,18 @@ const fileUpload = require('express-fileupload');
 
 const app = express();
 const PORT = process.env.PORT;
-
 const corsOptions = {
   origin: ['https://membershipform-omega.vercel.app', 'https://dashboard-three-lilac-57.vercel.app'],
   methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true, // Allow credentials (cookies, authorization headers)
 };
-
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(fileUpload({ useTempFiles: true }));
 
-// Use express-fileupload without specifying tempFileDir
-app.use(fileUpload({
-  useTempFiles: false,  // Disable temp file handling
-}));
-
-app.options('*', cors());
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "https://membershipform-omega.vercel.app");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-  next();
-});
-
-
+// MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -52,6 +34,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Member Schema
+// Member Schema
 const memberSchema = new mongoose.Schema({
   fullName: String,
   UID: String,
@@ -97,37 +81,25 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Directly upload to Cloudinary (buffer method)
+    // Upload CV/Portfolio to Cloudinary
     if (files && files.cvPortfolio) {
-      // Upload CV/Portfolio to Cloudinary (Buffer)
-      const cvUploadResponse = await cloudinary.uploader.upload(
-        files.cvPortfolio.data, // Buffer
-        { resource_type: 'raw' }, // For non-image files like PDF
-        (error, result) => {
-          if (error) {
-            return res.status(500).json({ message: 'Error uploading CV to Cloudinary', error });
-          }
-          cvPortfolioUrl = result.secure_url;
-        }
+      const uploadResponse = await cloudinary.uploader.upload(
+        files.cvPortfolio.tempFilePath,
+        { folder: 'Uploads', resource_type: 'raw' }
       );
+      cvPortfolioUrl = uploadResponse.secure_url;
     }
 
-    // Directly upload image to Cloudinary (buffer method)
+    // Upload Image to Cloudinary
     if (files && files.image) {
-      // Upload Image to Cloudinary (Buffer)
-      const imageUploadResponse = await cloudinary.uploader.upload(
-        files.image.data, // Buffer
-        { resource_type: 'image' }, // For image files
-        (error, result) => {
-          if (error) {
-            return res.status(500).json({ message: 'Error uploading image to Cloudinary', error });
-          }
-          imageUrl = result.secure_url;
-        }
+      const uploadResponse = await cloudinary.uploader.upload(
+        files.image.tempFilePath,
+        { folder: 'Images', resource_type: 'image' }
       );
+      imageUrl = uploadResponse.secure_url;
     }
 
-    // Create a new member document
+    // Create Member Document
     const newMember = new Member({
       fullName,
       UID,
@@ -142,26 +114,29 @@ app.post('/api/members', async (req, res) => {
       extracurricularActivities,
       previousPositions,
       achievements,
+      interests: JSON.parse(interests || '[]'),
       preferredRole,
+      socialMedia: JSON.parse(socialMedia || '{}'),
       languages: JSON.parse(languages || '[]'),
       specialSkills,
       suggestions,
       feedback,
       cvPortfolioUrl,
-      imageUrl,
+      imageUrl, // Save image URL
     });
 
-    // Save the new member to the database
+    // Save Member Data
     await newMember.save();
 
-    // Send a success response
-    res.status(201).json({ message: 'Member created successfully!' });
+    res.status(200).send({
+      message: 'Member data saved successfully!',
+      data: newMember,
+    });
   } catch (error) {
-    console.error('Error processing form submission:', error);
-    res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('Error saving member data:', error.message);
+    res.status(500).send({ message: 'Error saving member data' });
   }
 });
-
 app.get("/api/users", async (req, res) => {
   try {
     const members = await Member.find();
@@ -170,7 +145,6 @@ app.get("/api/users", async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 });
-
 // Start Server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
