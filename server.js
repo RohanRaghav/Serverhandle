@@ -5,7 +5,6 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const fileUpload = require('express-fileupload');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT;
@@ -21,9 +20,10 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Specify the temp file directory for express-fileupload
-const tempDir = path.join(__dirname, 'tmp');
-app.use(fileUpload({ useTempFiles: true, tempFileDir: tempDir }));
+// Use express-fileupload without specifying tempFileDir
+app.use(fileUpload({
+  useTempFiles: false,  // Don't use temporary files, upload directly from memory
+}));
 
 app.options('*', cors());
 app.use((req, res, next) => {
@@ -97,19 +97,19 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Upload CV/Portfolio to Cloudinary
+    // Upload CV/Portfolio to Cloudinary (directly from memory)
     if (files && files.cvPortfolio) {
       const uploadResponse = await cloudinary.uploader.upload(
-        files.cvPortfolio.tempFilePath,
+        files.cvPortfolio.data, // Use the file data from memory
         { folder: 'Uploads', resource_type: 'raw' }
       );
       cvPortfolioUrl = uploadResponse.secure_url;
     }
 
-    // Upload Image to Cloudinary
+    // Upload Image to Cloudinary (directly from memory)
     if (files && files.image) {
       const uploadResponse = await cloudinary.uploader.upload(
-        files.image.tempFilePath,
+        files.image.data, // Use the file data from memory
         { folder: 'Images', resource_type: 'image' }
       );
       imageUrl = uploadResponse.secure_url;
