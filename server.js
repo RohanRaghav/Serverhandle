@@ -109,7 +109,7 @@ app.post('/api/members', async (req, res) => {
       imageUrl = uploadResponse.secure_url;
     }
 
-    // Create Member Document
+    // Create a new member document
     const newMember = new Member({
       fullName,
       UID,
@@ -124,27 +124,23 @@ app.post('/api/members', async (req, res) => {
       extracurricularActivities,
       previousPositions,
       achievements,
-      interests: JSON.parse(interests || '[]'),
       preferredRole,
-      socialMedia: JSON.parse(socialMedia || '{}'),
       languages: JSON.parse(languages || '[]'),
       specialSkills,
       suggestions,
       feedback,
       cvPortfolioUrl,
-      imageUrl, // Save image URL
+      imageUrl,
     });
 
-    // Save Member Data
+    // Save the new member to the database
     await newMember.save();
 
-    res.status(200).send({
-      message: 'Member data saved successfully!',
-      data: newMember,
-    });
+    // Send a success response
+    res.status(201).json({ message: 'Member created successfully!' });
   } catch (error) {
-    console.error('Error saving member data:', error.message);
-    res.status(500).send({ message: 'Error saving member data' });
+    console.error('Error processing form submission:', error);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 });
 app.get("/api/users", async (req, res) => {
