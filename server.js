@@ -17,7 +17,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(fileUpload({ useTempFiles: true }));
+app.use(fileUpload({ useTempFiles: false }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
@@ -34,8 +34,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Member Schema
-// Member Schema
 const memberSchema = new mongoose.Schema({
   fullName: String,
   UID: String,
@@ -50,12 +48,7 @@ const memberSchema = new mongoose.Schema({
   extracurricularActivities: String,
   previousPositions: String,
   achievements: String,
-  interests: [String],
   preferredRole: String,
-  socialMedia: {
-    linkedIn: String,
-    github: String,
-  },
   languages: [String],
   specialSkills: String,
   suggestions: String,
@@ -74,7 +67,7 @@ app.post('/api/members', async (req, res) => {
       fullName, UID, department, year, semester,
       email, phoneNumber, technicalSkills, softSkills,
       certifications, extracurricularActivities, previousPositions,
-      achievements, interests, preferredRole, socialMedia,
+      achievements, preferredRole,
       languages, specialSkills, suggestions, feedback,
     } = req.body;
 
@@ -84,7 +77,7 @@ app.post('/api/members', async (req, res) => {
     // Upload CV/Portfolio to Cloudinary
     if (files && files.cvPortfolio) {
       const uploadResponse = await cloudinary.uploader.upload(
-        files.cvPortfolio.tempFilePath,
+        files.cvPortfolio.data,
         { folder: 'Uploads', resource_type: 'raw' }
       );
       cvPortfolioUrl = uploadResponse.secure_url;
@@ -93,12 +86,11 @@ app.post('/api/members', async (req, res) => {
     // Upload Image to Cloudinary
     if (files && files.image) {
       const uploadResponse = await cloudinary.uploader.upload(
-        files.image.tempFilePath,
-        { folder: 'Images', resource_type: 'image' }
+        files.image.data, // Directly use the buffer here
+        { resource_type: 'image', folder: 'Images' }
       );
       imageUrl = uploadResponse.secure_url;
     }
-
     // Create Member Document
     const newMember = new Member({
       fullName,
@@ -114,9 +106,7 @@ app.post('/api/members', async (req, res) => {
       extracurricularActivities,
       previousPositions,
       achievements,
-      interests: JSON.parse(interests || '[]'),
       preferredRole,
-      socialMedia: JSON.parse(socialMedia || '{}'),
       languages: JSON.parse(languages || '[]'),
       specialSkills,
       suggestions,
