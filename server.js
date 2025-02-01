@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const fileUpload = require('express-fileupload');
-
+const streamifier = require('streamifier');
 const app = express();
 const PORT = process.env.PORT;
 const corsOptions = {
@@ -74,22 +74,34 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Upload CV/Portfolio to Cloudinary
+    // Upload CV/Portfolio to Cloudinary (using stream for Buffer)
     if (files && files.cvPortfolio) {
-      const uploadResponse = await cloudinary.uploader.upload(
-        files.cvPortfolio.data,
-        { folder: 'Uploads', resource_type: 'raw' }
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'Uploads', resource_type: 'raw' },
+        (error, result) => {
+          if (error) {
+            console.error('Error uploading CV/Portfolio:', error);
+            return res.status(500).json({ message: 'Error uploading CV/Portfolio' });
+          }
+          cvPortfolioUrl = result.secure_url;
+        }
       );
-      cvPortfolioUrl = uploadResponse.secure_url;
+      streamifier.createReadStream(files.cvPortfolio.data).pipe(uploadStream);
     }
 
-    // Upload Image to Cloudinary
+    // Upload Image to Cloudinary (using stream for Buffer)
     if (files && files.image) {
-      const uploadResponse = await cloudinary.uploader.upload(
-        files.image.data, // Directly use the buffer here
-        { resource_type: 'image', folder: 'Images' }
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'Images', resource_type: 'image' },
+        (error, result) => {
+          if (error) {
+            console.error('Error uploading Image:', error);
+            return res.status(500).json({ message: 'Error uploading Image' });
+          }
+          imageUrl = result.secure_url;
+        }
       );
-      imageUrl = uploadResponse.secure_url;
+      streamifier.createReadStream(files.image.data).pipe(uploadStream);
     }
     // Create Member Document
     const newMember = new Member({
