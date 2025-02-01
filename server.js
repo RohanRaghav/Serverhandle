@@ -22,7 +22,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Use express-fileupload without specifying tempFileDir
 app.use(fileUpload({
-  useTempFiles: false,  // Don't use temporary files, upload directly from memory
+  useTempFiles: false,  // Disable temp file handling
 }));
 
 app.options('*', cors());
@@ -37,7 +37,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB Connection
+
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -97,38 +97,34 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Upload CV/Portfolio to Cloudinary (directly from memory as buffer)
+    // Directly upload to Cloudinary (buffer method)
     if (files && files.cvPortfolio) {
-      const uploadResponse = await cloudinary.uploader.upload_stream(
-        { resource_type: 'raw', folder: 'Uploads' }, // Use stream upload
+      // Upload CV/Portfolio to Cloudinary (Buffer)
+      const cvUploadResponse = await cloudinary.uploader.upload(
+        files.cvPortfolio.data, // Buffer
+        { resource_type: 'raw' }, // For non-image files like PDF
         (error, result) => {
           if (error) {
-            console.error('Error uploading CV/Portfolio:', error);
-            return res.status(500).json({ message: 'Error uploading CV/Portfolio' });
+            return res.status(500).json({ message: 'Error uploading CV to Cloudinary', error });
           }
           cvPortfolioUrl = result.secure_url;
         }
       );
-
-      // Write the file buffer to the upload stream
-      files.cvPortfolio.data.pipe(uploadResponse);
     }
 
-    // Upload Image to Cloudinary (directly from memory as buffer)
+    // Directly upload image to Cloudinary (buffer method)
     if (files && files.image) {
-      const uploadResponse = await cloudinary.uploader.upload_stream(
-        { resource_type: 'image', folder: 'Images' }, // Use stream upload
+      // Upload Image to Cloudinary (Buffer)
+      const imageUploadResponse = await cloudinary.uploader.upload(
+        files.image.data, // Buffer
+        { resource_type: 'image' }, // For image files
         (error, result) => {
           if (error) {
-            console.error('Error uploading image:', error);
-            return res.status(500).json({ message: 'Error uploading image' });
+            return res.status(500).json({ message: 'Error uploading image to Cloudinary', error });
           }
           imageUrl = result.secure_url;
         }
       );
-
-      // Write the file buffer to the upload stream
-      files.image.data.pipe(uploadResponse);
     }
 
     // Create a new member document
