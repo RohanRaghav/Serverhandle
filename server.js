@@ -5,8 +5,6 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const fileUpload = require('express-fileupload');
-const FormData = require('form-data');
-const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT;
@@ -24,7 +22,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Use express-fileupload without specifying tempFileDir
 app.use(fileUpload({
-  useTempFiles: false,  // Disable temp file handling
+  useTempFiles: false,  // Don't use temporary files, upload directly from memory
 }));
 
 app.options('*', cors());
@@ -99,34 +97,22 @@ app.post('/api/members', async (req, res) => {
     let cvPortfolioUrl = null;
     let imageUrl = null;
 
-    // Directly upload to Cloudinary
+    // Upload CV/Portfolio to Cloudinary (directly from memory as buffer)
     if (files && files.cvPortfolio) {
-      // Upload CV/Portfolio to Cloudinary using form-data
-      const cvUploadResponse = await cloudinary.uploader.upload_stream(
-        { resource_type: 'raw' }, // For non-image files like PDF
-        async (error, result) => {
-          if (error) {
-            return res.status(500).json({ message: 'Error uploading CV to Cloudinary', error });
-          }
-          cvPortfolioUrl = result.secure_url;
-        }
+      const uploadResponse = await cloudinary.uploader.upload(
+        files.cvPortfolio.data, // Directly use the buffer here
+        { resource_type: 'raw', folder: 'Uploads' }
       );
-      files.cvPortfolio.data.pipe(cvUploadResponse);
+      cvPortfolioUrl = uploadResponse.secure_url;
     }
 
-    // Directly upload image to Cloudinary
+    // Upload Image to Cloudinary (directly from memory as buffer)
     if (files && files.image) {
-      // Upload Image to Cloudinary using form-data
-      const imageUploadResponse = await cloudinary.uploader.upload_stream(
-        { resource_type: 'image' }, // For image files
-        async (error, result) => {
-          if (error) {
-            return res.status(500).json({ message: 'Error uploading image to Cloudinary', error });
-          }
-          imageUrl = result.secure_url;
-        }
+      const uploadResponse = await cloudinary.uploader.upload(
+        files.image.data, // Directly use the buffer here
+        { resource_type: 'image', folder: 'Images' }
       );
-      files.image.data.pipe(imageUploadResponse);
+      imageUrl = uploadResponse.secure_url;
     }
 
     // Create a new member document
