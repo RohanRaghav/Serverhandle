@@ -8,16 +8,29 @@ const fileUpload = require('express-fileupload');
 
 const app = express();
 const PORT = process.env.PORT;
+const cors = require('cors');
+
 const corsOptions = {
-  origin: ['https://membershipform-omega.vercel.app', 'https://dashboard-three-lilac-57.vercel.app'],
-  methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // Allow credentials (cookies, authorization headers)
+  origin: ["https://membershipform-omega.vercel.app", "https://dashboard-three-lilac-57.vercel.app"],
+  methods: ["GET", "POST", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 };
 app.use(cors(corsOptions));
+app.options('*', cors()); // Handle preflight requests globally
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(fileUpload({ useTempFiles: true }));
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://membershipform-omega.vercel.app");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
