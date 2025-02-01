@@ -99,20 +99,36 @@ app.post('/api/members', async (req, res) => {
 
     // Upload CV/Portfolio to Cloudinary (directly from memory as buffer)
     if (files && files.cvPortfolio) {
-      const uploadResponse = await cloudinary.uploader.upload(
-        files.cvPortfolio.data, // Directly use the buffer here
-        { resource_type: 'raw', folder: 'Uploads' }
+      const uploadResponse = await cloudinary.uploader.upload_stream(
+        { resource_type: 'raw', folder: 'Uploads' }, // Use stream upload
+        (error, result) => {
+          if (error) {
+            console.error('Error uploading CV/Portfolio:', error);
+            return res.status(500).json({ message: 'Error uploading CV/Portfolio' });
+          }
+          cvPortfolioUrl = result.secure_url;
+        }
       );
-      cvPortfolioUrl = uploadResponse.secure_url;
+
+      // Write the file buffer to the upload stream
+      files.cvPortfolio.data.pipe(uploadResponse);
     }
 
     // Upload Image to Cloudinary (directly from memory as buffer)
     if (files && files.image) {
-      const uploadResponse = await cloudinary.uploader.upload(
-        files.image.data, // Directly use the buffer here
-        { resource_type: 'image', folder: 'Images' }
+      const uploadResponse = await cloudinary.uploader.upload_stream(
+        { resource_type: 'image', folder: 'Images' }, // Use stream upload
+        (error, result) => {
+          if (error) {
+            console.error('Error uploading image:', error);
+            return res.status(500).json({ message: 'Error uploading image' });
+          }
+          imageUrl = result.secure_url;
+        }
       );
-      imageUrl = uploadResponse.secure_url;
+
+      // Write the file buffer to the upload stream
+      files.image.data.pipe(uploadResponse);
     }
 
     // Create a new member document
